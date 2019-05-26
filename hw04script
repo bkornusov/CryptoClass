@@ -1,0 +1,192 @@
+Script started on Thu May  9 22:44:42 2019
+[?1034hbash-3.2$ cat s[Kcrp[Kypto.h
+#ifndef CRYPTO_H
+#define CRYPTO_H
+
+#include <QString>
+#include <QVector>
+#include <cstdlib>
+
+//crypto.h
+
+// Batyr Kornusov Homework Assignment 4
+// Crypto class from Chapter 5.12
+// this file stores the class Crypto
+// last modified: 10:28 PM, 05.09.2019
+
+
+class Crypto {
+private:
+    QString m_OpSequence;
+    ushort m_CharSetSize;
+    ushort m_key;
+    QVector<int> m_perm;
+public:
+    Crypto(ushort key, QString opseq, ushort charsiz);
+    QString encrypt(const QString& str);
+    QString decrypt (const QString& str);
+    QString shift(const QString& str);
+    QString unshift(const QString& str);
+    QString permute(const QString& str);
+    QString unpermute(const QString& str);
+    int limitedRand(int max);
+    void randomPerm(int n);
+};
+
+#endif // CRYPTO_H
+bash-3.2$ cat crypto.cpp
+#include "crypto.h"
+#include <cstdlib>
+
+
+Crypto::Crypto(ushort key, QString opseq, ushort charsiz)
+    : m_key(key), m_OpSequence(opseq), m_CharSetSize(charsiz) { }
+
+QString Crypto::encrypt(const QString& str) {
+    randomPerm(str.length());
+    QString current(str), newStr;
+    for (ushort i = 0; i < m_OpSequence.length(); i++) {
+        if (m_OpSequence[i] == 's') newStr = shift(current);
+        else newStr = permute(current);
+        current = newStr;
+    }
+    return newStr;
+}
+QString Crypto::decrypt (const QString& str) {
+    randomPerm(str.length());
+    QString current(str), newStr;
+    for (ushort i = m_OpSequence.length(); i > 0; i--) {
+        if (m_OpSequence[i-1] == 's') newStr = unshift(current);
+        else newStr = unpermute(current);
+        current = newStr;
+    }
+    return newStr;
+}
+
+QString Crypto::shift(const QString& str) {
+    srand(m_key);
+    const ushort sft(m_CharSetSize);
+    int rand;
+    QString cryptoStr;
+    ushort cd, sCode;
+    for (int i = 0; i < str.length(); ++i) {
+        rand = limitedRand(m_CharSetSize);
+        cd = str[i].unicode();
+        sCode = (cd + rand) % sft ;
+        cryptoStr[i] = QChar(sCode) ;
+    }
+    return cryptoStr;
+}
+
+QString Crypto::unshift(const QString& str) {
+    srand(m_key);
+    const ushort sft(m_CharSetSize);
+    int rand;
+    QString cryptoStr;
+    ushort cd, sCode;
+    for (int i = 0; i < str.length(); ++i) {
+        rand = limitedRand(m_CharSetSize);
+        cd = str[i].unicode();
+        sCode = ((cd + sft) - rand) % sft ;
+        cryptoStr[i] = QChar(sCode) ;
+    }
+    return cryptoStr;
+}
+QString Crypto::permute(const QString& str) {
+    QString permStr;
+    for (int i = 0; i < str.length(); ++i) {
+        permStr += str.at(m_perm[i]);
+    }
+    return permStr;
+}
+QString Crypto::unpermute(const QString& str){
+    QString permStr;
+    for (int i = 0; i < str.length(); ++i) {
+        permStr[m_perm[i]] = str[i];
+    }
+    return permStr;
+}
+int Crypto::limitedRand(int max) {
+    return rand() % max ;
+}
+void Crypto::randomPerm(int n) {
+    const int swaps(n*2);
+    m_perm.clear();
+    m_perm.resize(n);
+    for (int i = 0; i < m_perm.length(); i++) {
+        m_perm[i] = i;
+    }
+    srand(m_key);
+    for (int i = 0; i < swaps; i++) {
+        int j = limitedRand(n);
+        int k = limitedRand(n);
+        int temp = m_perm[j];
+        m_perm[j] = m_perm[k];
+        m_perm[k] = temp;
+    }
+}
+
+int myRand(int min, int max) {
+    return rand() % (max + 1 - min) + min;
+}
+bash-3.2$ cat main.cpp
+#include "crypto.cpp"
+
+#include <QTextStream>
+#include "crypto.h"
+
+//main.cpp
+
+// Batyr Kornusov Homework Assignment 2
+// Crypto class from Chapter 5.12
+// this file stores the main function for the Crypto class assignment
+// last modified: 10:28 PM, 05.09.2019
+
+static QTextStream cout(stdout);
+
+int main()  {
+   QTextStream cout(stdout);
+   QString str1 ("asdfghjkl;QWERTYUIOP{}}|123456&*()_+zxcvnm,,, ./?."),
+           str2;
+   cout << "Original string: " << str1 << endl;
+   cout << "length: " << str1.length() << endl;
+   QString seqstr("pppp");
+   ushort key(12579);
+   ushort charsiz(str1.length());
+   Crypto crypt(key, seqstr, charsiz);
+   str2 = crypt.encrypt(str1);
+   cout << "Encrypted string: " << str2 << endl;
+   cout << "Recovered string: " << crypt.decrypt(str2) << endl;
+}
+bash-3.2$ cat hw4.pro
+TEMPLATE = app
+CONFIG += console c++11
+CONFIG -= app_bundle
+QT += core
+
+SOURCES += \
+        main.cpp \
+    crypto.cpp
+
+HEADERS += \
+    crypto.h
+bash-3.2$ qmake
+Info: creating stash file /Users/flowmaster/cs331/hw4/.qmake.stash
+bash-3.2$ make
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ -c -pipe -stdlib=libc++ -O2 -std=gnu++11  -arch x86_64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk -mmacosx-version-min=10.12 -Wall -W -fPIC -DQT_NO_DEBUG -DQT_GUI_LIB -DQT_CORE_LIB -I. -I../../Qt/5.12.2/clang_64/lib/QtGui.framework/Headers -I../../Qt/5.12.2/clang_64/lib/QtCore.framework/Headers -I. -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/Applications/Xcode10.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/OpenGL.framework/Headers -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/Applications/Xcode10.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/AGL.framework/Headers/ -I../../Qt/5.12.2/clang_64/mkspecs/macx-clang -F/Users/flowmaster/Qt/5.12.2/clang_64/lib -o main.o main.cpp
+In file included from main.cpp:1:
+[1m./crypto.cpp:6:7: [0m[0;1;35mwarning: [0m[1mfield 'm_key' will be initialized after field
+      'm_OpSequence' [-Wreorder][0m
+    : m_key(key), m_OpSequence(opseq), m_CharSetSize(charsiz) { }
+[0;1;32m      ^
+[0m1 warning generated.
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ -stdlib=libc++ -headerpad_max_install_names  -arch x86_64 -Wl,-syslibroot,/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk -mmacosx-version-min=10.12 -Wl,-rpath,@executable_path/../Frameworks -Wl,-rpath,/Users/flowmaster/Qt/5.12.2/clang_64/lib -o hw4 main.o   -F/Users/flowmaster/Qt/5.12.2/clang_64/lib -framework QtGui -framework QtCore -framework DiskArbitration -framework IOKit -framework OpenGL -framework AGL   
+bash-3.2$ ./hw4
+Original string: asdfghjkl;QWERTYUIOP{}}|123456&*()_+zxcvnm,,, ./?.
+length: 50
+Encrypted string: j_l{EUc&}(,52/6 km3Tsng?xPY+4fh*)zd,;}a.Ov1,|WI.QR
+Recovered string: asdfghjkl;QWERTYUIOP{}}|123456&*()_+zxcvnm,,, ./?.
+bash-3.2$ exit
+exit
+
+Script done on Thu May  9 22:46:07 2019
